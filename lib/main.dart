@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'models/transaction.dart';
+import 'screens/add_transaction_screen.dart';
 
 void main() {
   runApp(const BudgetApp());
@@ -34,13 +36,36 @@ class BudgetHomePage extends StatefulWidget {
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
   double totalBudget = 15000.0;
-  double spent = 8750.0;
   
-  final List<Transaction> transactions = [
-    Transaction('Groceries', -850.0, Icons.shopping_cart, Colors.orange),
-    Transaction('Salary', 15000.0, Icons.work, Colors.green),
-    Transaction('Petrol', -650.0, Icons.local_gas_station, Colors.red),
-    Transaction('Electricity', -1200.0, Icons.flash_on, Colors.blue),
+  List<Transaction> transactions = [
+    Transaction(
+      id: '1',
+      title: 'Salary',
+      amount: 15000.0,
+      date: DateTime.now().subtract(const Duration(days: 1)),
+      category: TransactionCategory.salary,
+    ),
+    Transaction(
+      id: '2',
+      title: 'Groceries - Pick n Pay',
+      amount: -850.0,
+      date: DateTime.now().subtract(const Duration(days: 2)),
+      category: TransactionCategory.groceries,
+    ),
+    Transaction(
+      id: '3',
+      title: 'Petrol - Shell',
+      amount: -650.0,
+      date: DateTime.now().subtract(const Duration(days: 3)),
+      category: TransactionCategory.transport,
+    ),
+    Transaction(
+      id: '4',
+      title: 'Electricity Bill',
+      amount: -1200.0,
+      date: DateTime.now().subtract(const Duration(days: 5)),
+      category: TransactionCategory.utilities,
+    ),
   ];
 
   String formatCurrency(double amount) {
@@ -48,10 +73,24 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     return formatter.format(amount);
   }
 
+  double get totalIncome {
+    return transactions.where((t) => t.isIncome).fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  double get totalExpenses {
+    return transactions.where((t) => t.isExpense).fold(0.0, (sum, t) => sum + t.amount.abs());
+  }
+
+  void _addTransaction(Transaction transaction) {
+    setState(() {
+      transactions.insert(0, transaction);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    double remaining = totalBudget - spent;
-    double progress = spent / totalBudget;
+    double remaining = totalBudget - totalExpenses;
+    double progress = totalExpenses / totalBudget;
     
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -116,7 +155,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Spent: ${formatCurrency(spent)}',
+                        'Spent: ${formatCurrency(totalExpenses)}',
                         style: const TextStyle(color: Colors.white70),
                       ),
                       Text(
@@ -136,10 +175,10 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
               children: [
                 Expanded(
                   child: _buildStatCard(
-                    'This Week',
-                    formatCurrency(2100),
-                    Icons.calendar_today,
-                    Colors.blue,
+                    'Total Income',
+                    formatCurrency(totalIncome),
+                    Icons.trending_up,
+                    Colors.green,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -167,12 +206,21 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             ),
             const SizedBox(height: 12),
             
-            ...transactions.map((transaction) => _buildTransactionCard(transaction)),
+            ...transactions.take(5).map((transaction) => _buildTransactionCard(transaction)),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddTransactionScreen(
+                onAddTransaction: _addTransaction,
+              ),
+            ),
+          );
+        },
         backgroundColor: const Color(0xFF2E7D32),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -238,12 +286,12 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: transaction.color.withOpacity(0.1),
+              color: transaction.category.color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              transaction.icon,
-              color: transaction.color,
+              transaction.category.icon,
+              color: transaction.category.color,
               size: 20,
             ),
           ),
@@ -269,13 +317,4 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       ),
     );
   }
-}
-
-class Transaction {
-  final String title;
-  final double amount;
-  final IconData icon;
-  final Color color;
-  
-  Transaction(this.title, this.amount, this.icon, this.color);
 }
